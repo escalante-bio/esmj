@@ -1,23 +1,11 @@
 """JAX/Equinox model definitions for ESMC. No torch imports."""
 
-from functools import partial
-
 import einops
 import equinox as eqx
 import jax
 from jax import numpy as jnp
 from jaxtyping import Array, Float, Int
 import numpy as np
-
-
-def _vmap(f, tensor, *args):
-    for _ in range(len(tensor.shape) - 1):
-        f = jax.vmap(f)
-    return f(tensor, *args)
-
-
-def vmap_to_last_dimension(f):
-    return partial(_vmap, f)
 
 
 def swiglu(x):
@@ -46,20 +34,14 @@ class LayerNorm(eqx.Module):
     eps: float
 
     def __call__(self, x: Float[Array, "... Out"]) -> Float[Array, "... Out"]:
-        ln = eqx.nn.LayerNorm(
-            shape=x.shape[-1],
-            eps=self.eps,
-            use_weight=self.weight is not None,
-            use_bias=self.bias is not None,
-        )
-        ln = eqx.tree_at(
-            lambda l: (l.weight, l.bias),
-            ln,
-            (self.weight, self.bias),
-            is_leaf=lambda x: x is None,
-        )
-
-        return vmap_to_last_dimension(ln)(x)
+        mean = jnp.mean(x, axis=-1, keepdims=True)
+        var = jnp.var(x, axis=-1, keepdims=True)
+        out = (x - mean) / jnp.sqrt(var + self.eps)
+        if self.weight is not None:
+            out = out * self.weight
+        if self.bias is not None:
+            out = out + self.bias
+        return out
 
 
 class Sequential(eqx.Module):
