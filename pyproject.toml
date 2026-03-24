@@ -5,11 +5,18 @@ description = "JAX translation of ESMC"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "einops>=0.8.0",
     "equinox>=0.12.1",
-    "esm>=3.2.0",
+    "huggingface-hub",
     "jax>=0.5.3",
     "jaxtyping>=0.3.2",
     "numpy>=1.26.3",
+]
+
+[project.optional-dependencies]
+convert = [
+    "esm>=3.2.0",
+    "torch",
 ]
 
 [tool.uv]
